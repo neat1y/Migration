@@ -1,0 +1,12 @@
+migration:
+  password: postgres
+  url: jdbc:postgresql://localhost:5432/migration
+  name: postgres
+  file:
+    path:
+      url:
+        /home/neatly/migration
+#        classpath:/db/migration
+
+asdfsdf:
+  sadf
