@@ -11,20 +11,19 @@ public class MigrationExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(MigrationExecutor.class);
 
-    public void ddl_query(String sql) throws SQLException {
-        try (Connection connection = ConnectionManager.getConnection();
+    public void ddl_query(String sql,Connection connection) throws SQLException {
+        try (
              Statement statement = connection.createStatement()) {
             statement.executeUpdate(sql);
             log.info("all fine");
         } catch (SQLException e) {
-            // переделать логирование
             log.error("Ошибка при выполнении SQL: " + e.getMessage()+" " +"SQLState: " + e.getSQLState());
             throw e;
         }
     }
-    public void dml_query_for_change(String sql) throws SQLException {
-        try (Connection connection = ConnectionManager.getConnection();
-             Statement statement = connection.createStatement())
+    public void dml_query_for_change(String sql,Connection connection) throws SQLException {
+        try (
+             Statement statement = connection.createStatement();)
         {
             int row =statement.executeUpdate(sql);
             if(row>0){
@@ -34,14 +33,12 @@ public class MigrationExecutor {
                 throw new SQLException("не прошел запрос");
             }
         } catch (SQLException e) {
-            // переделать логирование
             log.error("Ошибка при выполнении SQL: " + e.getMessage()+" " +"SQLState: " + e.getSQLState());
             throw e;
         }
     }
-    public void dml_query_for_insert(String sql, MigrationSchema migration_schema) throws SQLException {
-        try (Connection connection = ConnectionManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql))
+    public void dml_query_for_insert(String sql, MigrationSchema migration_schema,Connection connection) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql);)
         {
             statement.setString(1,migration_schema.getVersion());
             statement.setLong(2,migration_schema.getCRC());
@@ -50,14 +47,12 @@ public class MigrationExecutor {
             statement.setString(5,migration_schema.getFilename());
             statement.executeUpdate();
         } catch (SQLException e) {
-            // переделать логирование
             log.error("Ошибка при выполнении SQL: " + e.getMessage()+" " +"SQLState: " + e.getSQLState());
             throw e;
         }
     }
-    public List<Long> dml_query_select_CRC(String sql){
-        try(Connection connection= ConnectionManager.getConnection();
-            Statement statement=connection.createStatement()) {
+    public List<Long> dml_query_select_CRC(String sql,Connection connection){
+        try(Statement statement=connection.createStatement()) {
             List<Long> CRCArray=new ArrayList<>(40);
             ResultSet resultSet= statement.executeQuery(sql);
             while(resultSet.next()){

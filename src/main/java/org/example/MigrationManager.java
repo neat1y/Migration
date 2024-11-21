@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.swing.text.StyledEditorKit;
 import java.io.*;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Date;
 import java.util.List;
@@ -34,8 +35,9 @@ public class MigrationManager {
 
     static{
         try {
-            migrationExecutor.ddl_query(queryForBlock);
-            migrationExecutor.ddl_query(queryForAdditionalTable);
+            Connection connection=ConnectionManager.getConnection();
+            migrationExecutor.ddl_query(queryForBlock,connection);
+            migrationExecutor.ddl_query(queryForAdditionalTable,connection);
         } catch (SQLException e) {
             logger.error("SQL exception "+ e.getErrorCode());
             throw new RuntimeException(e);
@@ -63,65 +65,73 @@ public class MigrationManager {
 
 
     public  static void execute(File [] files){
-        List<Long> array_CRC= migrationExecutor.dml_query_select_CRC(SelectCRC);
-        for(File file:files){
-            StringBuilder query=new StringBuilder();
-            try(BufferedReader br=new BufferedReader(new FileReader(file))){
-                String line;
-                Long CRC_File= get_CRC(file);
-                Boolean flag=Boolean.FALSE;
-                for(int i=0;i<array_CRC.size();i++){
-                    if(CRC_File.equals(array_CRC.get(i))){
-                        flag=Boolean.TRUE;
-                        break;
-                    }
-                }
-                if(flag==Boolean.TRUE){
-                    continue;
-                }
-                while((line = br.readLine()) != null) {
-                    query.append(line);
-                    if(query.toString().contains(";")){
-                        if(query.toString().contains("select")
-                                || query.toString().contains("insert")
-                                || query.toString().contains("update")
-                                || query.toString().contains("DELETE")
-                        ) {
-                            migrationExecutor.dml_query_for_change(query.toString());
+        Connection connection = null;
+        try {
+            connection=ConnectionManager.getConnection();
+            connection.setAutoCommit(false);
+            List<Long> array_CRC = migrationExecutor.dml_query_select_CRC(SelectCRC,connection);
+            for (File file : files) {
+                StringBuilder query = new StringBuilder();
+                try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+                    String line;
+                    Long CRC_File = get_CRC(file);
+                    Boolean flag = Boolean.FALSE;
+                    for (int i = 0; i < array_CRC.size(); i++) {
+                        if (CRC_File.equals(array_CRC.get(i))) {
+                            flag = Boolean.TRUE;
+                            break;
                         }
-                        else{
-                            migrationExecutor.ddl_query(query.toString());
-                        }
-                        query = new StringBuilder();
-
                     }
-                }
+                    if (flag == Boolean.TRUE) {
+                        continue;
+                    }
+                    while ((line = br.readLine()) != null) {
+                        query.append(line);
+                        if (query.toString().contains(";")) {
+                            if (query.toString().contains("select")
+                                    || query.toString().contains("insert")
+                                    || query.toString().contains("update")
+                                    || query.toString().contains("DELETE")
+                            ) {
+                                migrationExecutor.dml_query_for_change(query.toString(),connection);
+                            } else {
+                                migrationExecutor.ddl_query(query.toString(),connection);
+                            }
+                            query = new StringBuilder();
 
-                String type="-";
-                String version="-";
-                if(file.getName().indexOf(".")>  -1){
-                    type = file.getName().substring( file.getName().indexOf(".")+ 1);
-                }
-                if(file.getName().indexOf("__")>-1){
-                    version =file.getName().substring(0,file.getName().indexOf("__"));
-                }
+                        }
+                    }
 
-                MigrationSchema migrationSchema=new MigrationSchema();
-                migrationSchema.setFilename(file.getName());
-                migrationSchema.setCRC(CRC_File);
-                migrationSchema.setType(type);
-                migrationSchema.setInstalled_by(username);
-                migrationSchema.setVersion(version);
-                migrationExecutor.dml_query_for_insert(insertMigrationSchema,migrationSchema);
+                    String type = "-";
+                    String version = "-";
+                    if (file.getName().indexOf(".") > -1) {
+                        type = file.getName().substring(file.getName().indexOf(".") + 1);
+                    }
+                    if (file.getName().indexOf("__") > -1) {
+                        version = file.getName().substring(0, file.getName().indexOf("__"));
+                    }
 
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
+                    MigrationSchema migrationSchema = new MigrationSchema();
+                    migrationSchema.setFilename(file.getName());
+                    migrationSchema.setCRC(CRC_File);
+                    migrationSchema.setType(type);
+                    migrationSchema.setInstalled_by(username);
+                    migrationSchema.setVersion(version);
+                    migrationExecutor.dml_query_for_insert(insertMigrationSchema, migrationSchema,connection);
+                    connection.commit();
+                } catch (FileNotFoundException | SQLException e) {
+                    throw new SQLException(e);
+                } catch (IOException e) {
+                    throw new SQLException(e);
+                }
             }
-
+        } catch (SQLException e) {
+            try {
+                connection.rollback();
+            } catch (SQLException ex) {
+                logger.error("error with rollback " +ex.getMessage());
+            }
+            throw new RuntimeException(e);
         }
     }
 }
