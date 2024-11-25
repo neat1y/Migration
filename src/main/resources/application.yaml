@@ -1,0 +1,11 @@
+migration:
+  password: your_password
+  url: jdbc:postgresql://localhost:5432/migration
+  name: your_name
+  file:
+    path:
+      url:
+        /home/neatly/migration
+#        classpath:db/migration
+  type:
+    false

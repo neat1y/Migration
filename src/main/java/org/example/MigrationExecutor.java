@@ -71,10 +71,9 @@ public class MigrationExecutor {
         try(Statement statement=connection.createStatement()) {
             Boolean flag=Boolean.FALSE;
             ResultSet resultSet= statement.executeQuery(sql);
-            if(resultSet!=null){
-                flag=resultSet.getBoolean("flag");
-            }
-            else{
+            if (resultSet.next()) {
+                flag = resultSet.getBoolean("flag");
+            } else {
                 statement.executeUpdate(insertTableBlock);
             }
             log.info("Query select crc Successfully");
