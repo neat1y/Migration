@@ -9,7 +9,9 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -64,7 +66,10 @@ public class MigrationFileReader {
             MigrationManager.executeForMigrate(files_final_migrate);
         }
     }
-
+    private static Boolean checkBlockTable(){
+        Boolean flag= MigrationManager.checkblockTable();
+        return flag;
+    }
     private static File[] getFiles(String  urlString){
         String classpath=urlString.substring(0,9);
         if(classpath.equals("classpath")){

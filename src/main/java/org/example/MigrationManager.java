@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.CRC32;
@@ -18,6 +19,9 @@ public class MigrationManager {
 
    private static final String deleteRowMigration= """
            delete from migration_schema where version=?
+           """;
+    private static final String selectForblock= """
+           select from block
            """;
 
     private static final String queryForAdditionalTable= "CREATE TABLE IF NOT EXISTS migration_schema (\n" +
@@ -37,6 +41,9 @@ public class MigrationManager {
             "(version,crc,type,installed_by,filename) values(?,?,?,?,?);";
     private static final String SelectCRC="SELECT crc FROM migration_schema;";
 
+    private static final String checkBlockTable= """
+            Select * from block;
+            """;
     static{
         try {
             Connection connection=ConnectionManager.getConnection();
@@ -87,6 +94,7 @@ public class MigrationManager {
         }
 
     }
+    //
     public static void executeForRollBack(ArrayList<File> files){
         Connection connection = null;
         try {
@@ -132,7 +140,16 @@ public class MigrationManager {
                                 || query.toString().contains("update")
                                 || query.toString().contains("DELETE")
                         ) {
-                            migrationExecutor.dml_query_for_change(query.toString(),connection);
+                            Boolean block= migrationExecutor.dmlQueryForBlock(selectForblock,connection);
+                             if(block!=Boolean.FALSE) {
+                                    while(block!=Boolean.FALSE){
+                                        Thread.sleep(100);
+                                        block=migrationExecutor.dmlQueryForBlock(selectForblock,connection);
+                                    }
+                             }
+                             migrationExecutor.changeValueBlock(Boolean.TRUE,connection);
+                             migrationExecutor.dml_query_for_change(query.toString(), connection);
+                             migrationExecutor.changeValueBlock(Boolean.FALSE,connection);
                         } else {
                             migrationExecutor.ddl_query(query.toString(),connection);
                         }
@@ -158,17 +175,26 @@ public class MigrationManager {
                 migrationSchema.setVersion(version);
                 migrationExecutor.dml_query_for_insert(insertMigrationSchema, migrationSchema,connection);
 
-            } catch (FileNotFoundException | SQLException e) {
+            } catch (FileNotFoundException | SQLException | InterruptedException e) {
                 try {
+                    migrationExecutor.changeValueBlock(Boolean.FALSE,connection);
                     throw new SQLException(e);
                 } catch (SQLException ex) {
+                    migrationExecutor.changeValueBlock(Boolean.FALSE,connection);
                     throw new RuntimeException(ex);
                 }
             } catch (IOException e) {
+                migrationExecutor.changeValueBlock(Boolean.FALSE,connection);
                 throw new SQLException(e);
             }
         }
     }
 
 
+    static Boolean checkblockTable() {
+        Connection connection=null;
+        connection=ConnectionManager.getConnection();
+        return migrationExecutor.dmlQueryForBlock(selectForblock,connection);
+
+    }
 }

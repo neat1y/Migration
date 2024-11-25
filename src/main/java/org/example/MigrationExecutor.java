@@ -8,9 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MigrationExecutor {
-
+    private  static String insertTableBlock="insert into block (flag) values(false);";
     private static final Logger log = LoggerFactory.getLogger(MigrationExecutor.class);
-
+    private static  final String updateTableBlock="update block set flag=?;";
     public void ddl_query(String sql,Connection connection) throws SQLException {
         try (
              Statement statement = connection.createStatement()) {
@@ -62,6 +62,34 @@ public class MigrationExecutor {
             }
             log.info("Query select crc Successfully");
             return CRCArray;
+        } catch (SQLException e) {
+            log.error("Ошибка при выполнении SQL: " + e.getMessage()+" " +"SQLState: " + e.getSQLState());
+            throw new RuntimeException(e);
+        }
+    }
+    public Boolean dmlQueryForBlock(String sql,Connection connection){
+        try(Statement statement=connection.createStatement()) {
+            Boolean flag=Boolean.FALSE;
+            ResultSet resultSet= statement.executeQuery(sql);
+            if(resultSet!=null){
+                flag=resultSet.getBoolean("flag");
+            }
+            else{
+                statement.executeUpdate(insertTableBlock);
+            }
+            log.info("Query select crc Successfully");
+            return flag;
+        } catch (SQLException e) {
+            log.error("Ошибка при выполнении SQL: " + e.getMessage()+" " +"SQLState: " + e.getSQLState());
+            throw new RuntimeException(e);
+        }
+    }
+    public Boolean changeValueBlock(Boolean flag,Connection connection){
+        try(PreparedStatement statement=connection.prepareStatement(updateTableBlock)) {
+            statement.setBoolean(1,flag);
+            int rowsAffected = statement.executeUpdate();
+            log.info("Query select crc Successfully");
+            return flag;
         } catch (SQLException e) {
             log.error("Ошибка при выполнении SQL: " + e.getMessage()+" " +"SQLState: " + e.getSQLState());
             throw new RuntimeException(e);
