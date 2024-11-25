@@ -10,6 +10,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -27,11 +28,49 @@ public class MigrationFileReader {
         Map<String,Object> paths= (Map<String,Object>)file.get("path");
         String sort= (String) paths.get("sort");
         String urlString=(String) paths.get("url");
+        Boolean rollback=Boolean.FALSE;
+        Boolean rollback_yaml=(Boolean) migration.get("type");
+        if(rollback_yaml!=null){
+            if(rollback_yaml.equals(Boolean.TRUE)){
+                rollback=Boolean.TRUE;
+            }
+        }
+        files=getFiles(urlString);
+
+        ArrayList<File> files_final_migrate= new ArrayList<>(files.length);
+        ArrayList<File> files_final_rollback=new ArrayList<>(files.length);
+//        int i_migrate=0;
+//        int i_rollback=0;
+        for(File file1 :files) {
+            int index = file1.getName().indexOf("__");
+            String file_name=file1.getName();
+            if(index!=-1){
+                if(file_name.charAt(0) == 'U'){
+                    files_final_rollback.add(file1);
+//                    i_rollback++;
+                }
+                if(file_name.charAt(0)=='V'){
+                    files_final_migrate.add(file1);
+//                    i_migrate++;
+                }
+            }
+        }
+        if(rollback==Boolean.TRUE){
+            log.info("Операции rollback");
+            MigrationManager.executeForRollBack(files_final_rollback);
+        }
+        else {
+            log.info("Операции migrate");
+            MigrationManager.executeForMigrate(files_final_migrate);
+        }
+    }
+
+    private static File[] getFiles(String  urlString){
         String classpath=urlString.substring(0,9);
         if(classpath.equals("classpath")){
             log.info("Папка находится в проекте");
-            String resource=urlString.substring(11);
-            URL migration_URL = MigrationFileReader.class.getClassLoader().getResource(resource);
+            String resource=urlString.substring(10);
+            URL migration_URL = Thread.currentThread().getContextClassLoader().getResource(resource);
             File file1= null;
             try {
                 file1 = new File(migration_URL.toURI());
@@ -40,7 +79,9 @@ public class MigrationFileReader {
             }
             if(file1.isDirectory()){
                 files = file1.listFiles();
+                return files;
             }
+            return file1.listFiles();
         }
         else{
             log.info("У папки абсолютная директория");
@@ -48,10 +89,10 @@ public class MigrationFileReader {
             file1 = new File(urlString);
             if(file1.isDirectory()){
                 files = file1.listFiles();
+                return files;
             }
+            return file1.listFiles();
         }
-        MigrationManager.execute(files);
     }
-
 }
 

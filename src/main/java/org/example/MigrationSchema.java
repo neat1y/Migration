@@ -1,10 +1,5 @@
 package org.example;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
 public class MigrationSchema {
     private Integer installed_rank;
     private String version;

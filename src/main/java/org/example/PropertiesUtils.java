@@ -1,5 +1,7 @@
 package org.example;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
@@ -10,19 +12,19 @@ import java.util.Properties;
 
 public class  PropertiesUtils {
 
-    private static  Properties properties = new Properties();
     private static  Map<String,Object> credantional=new HashMap<>(16);
-    private static Boolean flag=Boolean.FALSE;
+    private static Logger logger= LoggerFactory.getLogger(PropertiesUtils.class);
     static {
         //сделать проверку на properties или yaml
         try (InputStream inputStream  = PropertiesUtils.class.getClassLoader().getResourceAsStream("application.yaml");) {
             Yaml yaml = new Yaml();
             credantional= yaml.load(inputStream);
-            flag=Boolean.TRUE;
+            logger.info("Данные успешно обработаны с yaml файла");
         }
         catch (IOException e) {
-            flag=Boolean.FALSE;
+            logger.error("Данные не взяты с yaml файла "+e.getMessage());
             e.printStackTrace();
+
         }
     }
 

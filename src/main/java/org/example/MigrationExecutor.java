@@ -15,7 +15,7 @@ public class MigrationExecutor {
         try (
              Statement statement = connection.createStatement()) {
             statement.executeUpdate(sql);
-            log.info("all fine");
+            log.info("ddl query passed successfully");
         } catch (SQLException e) {
             log.error("Ошибка при выполнении SQL: " + e.getMessage()+" " +"SQLState: " + e.getSQLState());
             throw e;
@@ -27,9 +27,10 @@ public class MigrationExecutor {
         {
             int row =statement.executeUpdate(sql);
             if(row>0){
-                log.info("all fine");
+                log.info("dml query passed successfully");
             }
             else{
+                log.error("Dml query didn't pass");
                 throw new SQLException("не прошел запрос");
             }
         } catch (SQLException e) {
@@ -46,6 +47,7 @@ public class MigrationExecutor {
             statement.setString(4,migration_schema.getInstalled_by());
             statement.setString(5,migration_schema.getFilename());
             statement.executeUpdate();
+            log.info("Query  for insert migration_schema Successfully");
         } catch (SQLException e) {
             log.error("Ошибка при выполнении SQL: " + e.getMessage()+" " +"SQLState: " + e.getSQLState());
             throw e;
@@ -58,8 +60,10 @@ public class MigrationExecutor {
             while(resultSet.next()){
                 CRCArray.add(resultSet.getLong("CRC"));
             }
+            log.info("Query select crc Successfully");
             return CRCArray;
         } catch (SQLException e) {
+            log.error("Ошибка при выполнении SQL: " + e.getMessage()+" " +"SQLState: " + e.getSQLState());
             throw new RuntimeException(e);
         }
     }
