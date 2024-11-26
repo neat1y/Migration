@@ -44,6 +44,7 @@ public class MigrationManager {
     private static final String checkBlockTable= """
             Select * from block;
             """;
+    //Сразу выполняются запросы на добавление 2 таблиц это block и migration_schema если они уже есть то запросы не будут выполнены
     static{
         try {
             Connection connection=ConnectionManager.getConnection();
@@ -55,6 +56,7 @@ public class MigrationManager {
         }
         username=ConnectionManager.getName();
     }
+    // Отдельный  метод для посчета CRC в одном файле
     public static Long get_CRC(File file){
         CRC32 crc32 = new CRC32();
 
@@ -74,6 +76,7 @@ public class MigrationManager {
         }
     }
 
+    // след 2 метода нужны для разделенеие на migrate or rollback это нужна для возможной изменении логики в rollback
 
     public  static void executeForMigrate(ArrayList<File> files){
         Connection connection = null;
@@ -115,7 +118,7 @@ public class MigrationManager {
 
     }
 
-
+    // Выполняет все файлы которые подаются на вход и проверяет каждый CRC  с каждым файлом
     private static void executeFiles(ArrayList<File> files,List<Long> array_CRC,Connection connection) throws SQLException {
         for (File file : files) {
             StringBuilder query = new StringBuilder();
@@ -130,16 +133,21 @@ public class MigrationManager {
                     }
                 }
                 if (flag == Boolean.TRUE) {
+                    // Если повтор был то не считываем этот файл а просто переходим к след
                     continue;
                 }
                 while ((line = br.readLine()) != null) {
                     query.append(line);
+                    // Строка конкатенируется с линией до знака ';' когда он видит ';' то он проверяет какой это запрос
                     if (query.toString().contains(";")) {
+                        // Если это dml запрос то идет одна логика если ddl другая
                         if (query.toString().contains("select")
                                 || query.toString().contains("insert")
                                 || query.toString().contains("update")
                                 || query.toString().contains("DELETE")
                         ) {
+                            //Если это dml зпрос будет работать блокировка, сначала проверяет открыт ли ресурс, если да то
+                            // захватывает его, если нет ждет 100 млс и делает еще раз запрос
                             Boolean block= migrationExecutor.dmlQueryForBlock(selectForblock,connection);
                              if(block!=Boolean.FALSE) {
                                     while(block!=Boolean.FALSE){
@@ -151,13 +159,14 @@ public class MigrationManager {
                              migrationExecutor.dml_query_for_change(query.toString(), connection);
                              migrationExecutor.changeValueBlock(Boolean.FALSE,connection);
                         } else {
+                            // на ddl я не делал блокировку
                             migrationExecutor.ddl_query(query.toString(),connection);
                         }
                         query = new StringBuilder();
 
                     }
                 }
-
+                // Собираем информацию для migration_schema
                 String type = "-";
                 String version = "-";
                 if (file.getName().indexOf(".") > -1) {
@@ -173,25 +182,29 @@ public class MigrationManager {
                 migrationSchema.setType(type);
                 migrationSchema.setInstalled_by(username);
                 migrationSchema.setVersion(version);
+                //Делаем запром в migration_schema
                 migrationExecutor.dml_query_for_insert(insertMigrationSchema, migrationSchema,connection);
 
             } catch (FileNotFoundException | SQLException | InterruptedException e) {
                 try {
+                    // Если была какая то ошибка Освобождаем ресурс
                     migrationExecutor.changeValueBlock(Boolean.FALSE,connection);
                     throw new SQLException(e);
                 } catch (SQLException ex) {
+
+                    // Если была какая то ошибка Освобождаем ресурс
                     migrationExecutor.changeValueBlock(Boolean.FALSE,connection);
                     throw new RuntimeException(ex);
                 }
             } catch (IOException e) {
+                // Если была какая то ошибка Освобождаем ресурс
                 migrationExecutor.changeValueBlock(Boolean.FALSE,connection);
                 throw new SQLException(e);
             }
         }
     }
 
-
-    static Boolean checkblockTable() {
+    private static Boolean checkblockTable() {
         Connection connection=null;
         connection=ConnectionManager.getConnection();
         return migrationExecutor.dmlQueryForBlock(selectForblock,connection);

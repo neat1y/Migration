@@ -24,7 +24,9 @@ public class MigrationFileReader {
     private Map<String,Object> file_info=new HashMap<>(4);
     private static final Logger log = LoggerFactory.getLogger(MigrationFileReader.class);
     static {
+        // Идет считка всех credentional
         Map<String,Object> credentional= PropertiesUtils.getCredantional();
+
         Map<String,Object> migration=(Map<String,Object>)credentional.get("migration");
         Map<String,Object> file=(Map<String,Object>)migration.get("file");
         Map<String,Object> paths= (Map<String,Object>)file.get("path");
@@ -37,6 +39,7 @@ public class MigrationFileReader {
                 rollback=Boolean.TRUE;
             }
         }
+
         files=getFiles(urlString);
 
         ArrayList<File> files_final_migrate= new ArrayList<>(files.length);
@@ -48,10 +51,12 @@ public class MigrationFileReader {
             String file_name=file1.getName();
             if(index!=-1){
                 if(file_name.charAt(0) == 'U'){
+                    // Получаем все файлы migrate
                     files_final_rollback.add(file1);
 //                    i_rollback++;
                 }
                 if(file_name.charAt(0)=='V'){
+                    //Получаем все файлы rollback
                     files_final_migrate.add(file1);
 //                    i_migrate++;
                 }
@@ -66,10 +71,8 @@ public class MigrationFileReader {
             MigrationManager.executeForMigrate(files_final_migrate);
         }
     }
-    private static Boolean checkBlockTable(){
-        Boolean flag= MigrationManager.checkblockTable();
-        return flag;
-    }
+    // Получаем все файлы, если написал classpath значи находится в папке с resource если нет
+    // то это абсолютная директория
     private static File[] getFiles(String  urlString){
         String classpath=urlString.substring(0,9);
         if(classpath.equals("classpath")){

@@ -15,7 +15,8 @@ public class  PropertiesUtils {
     private static  Map<String,Object> credantional=new HashMap<>(16);
     private static Logger logger= LoggerFactory.getLogger(PropertiesUtils.class);
     static {
-        //сделать проверку на properties или yaml
+        // Считываем с yaml Использовалась библиотку snakeyaml хранит все данные через Map<Srting,Object> после чего object
+        // можно задаункастить в Map<String,Object> таким образом можно получить все данные
         try (InputStream inputStream  = PropertiesUtils.class.getClassLoader().getResourceAsStream("application.yaml");) {
             Yaml yaml = new Yaml();
             credantional= yaml.load(inputStream);
